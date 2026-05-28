@@ -1,48 +1,73 @@
-# Production Plan Evaluator
+# Production Plan Review Skills
 
-A Codex skill for reviewing and elevating already-proposed production implementation plans before execution.
+Three focused Codex skills for deep production-change review. They keep each stage strict, evidence-led, and non-superficial.
 
-It is designed for cases where a plan may be technically workable but risky for production because it is nonstandard, hard to maintain, weakly evidenced, difficult to roll back, or misaligned with service/platform-native operations.
+## Skills
 
-## What it does
+1. **`production-plan-gate-review`** — reconstructs the actual implementation path, checks step executability, compares native/industry alternatives, emits a Gate v2 structured record, and decides whether elevation is required.
+2. **`production-plan-elevation`** — turns Gate v2 blockers into production-ready candidate paths, with cutover, rollback, observability, ownership, and exception handling.
+3. **`production-plan-final-gate`** — independently decides `Go`, `Conditional Go`, `No-Go / Return to Design`, or `Defer / Need Evidence` from the Gate v2 record, prior elevation artifacts, and proof.
 
-The skill evaluates an existing implementation plan through three layers:
+## Recommended workflow
 
-1. **Gate Review** — normalize the proposal, expose assumptions, compare against official/industry/native practices, and identify deficiencies.
-2. **Elevation** — when risk or nonstandard design warrants it, produce a more production-ready alternative.
-3. **Final Gate** — independently decide `Go`, `Conditional Go`, `No-Go`, or `Defer / Need Evidence`.
+Run the skills in order:
 
-## When to use
+```text
+Draft plan
+  -> production-plan-gate-review
+  -> production-plan-elevation, if Gate Review says elevation is required
+  -> production-plan-final-gate
+```
 
-Use it before production changes such as:
-
-- service lifecycle / process supervision changes
-- migrations and stateful changes
-- Kubernetes rollouts and traffic cutovers
-- certificate, permission, and security rotations
-- zero-downtime or high-risk infrastructure changes
-- AI-generated implementation proposals that need production review
+Do not ask one skill to complete all three stages. The skills intentionally do not include a routing or compatibility wrapper because the old combined flow encouraged shallow one-pass reviews.
 
 ## Install
 
-Copy the skill directory into your Codex skills directory:
+Copy the skill directories into your Codex skills directory:
 
 ```bash
 mkdir -p ~/.codex/skills
-cp -R production-plan-evaluator ~/.codex/skills/
+cp -R production-plan-gate-review ~/.codex/skills/
+cp -R production-plan-elevation ~/.codex/skills/
+cp -R production-plan-final-gate ~/.codex/skills/
 ```
 
-Then start a new Codex session so the skill metadata is loaded.
+Start a new Codex session so the skill metadata is loaded.
 
 ## Structure
 
 ```text
-production-plan-evaluator/
+production-plan-gate-review/
+  SKILL.md
+  gate-review-SOP.md
+  scripts/
+    validate_gate_record.py
+  references/
+    calibration-cases.md
+    evidence-ledger.md
+    orchestrator-state-machine.md
+    path-canvas-template.md
+production-plan-elevation/
+  SKILL.md
+  production-plan-elevation-SOP.md
+  references/
+    elevation-options-template.md
+    exception-template.md
+production-plan-final-gate/
   SKILL.md
   references/
     evidence-ledger.md
-    exception-template.md
-    calibration-cases.md
+    final-gate-checklist.md
+```
+
+## Gate v2 record
+
+`production-plan-gate-review` emits a structured Gate v2 record so downstream skills can reason from explicit data rather than prose summaries. The record must include normalized inputs, path steps, evidence ledger items, alternative checks, deficiency chains, and elevation status.
+
+Use the local validator before handing a Gate v2 record to the next stage:
+
+```bash
+python production-plan-gate-review/scripts/validate_gate_record.py path/to/gate-record.json
 ```
 
 ## Verification
@@ -50,10 +75,10 @@ production-plan-evaluator/
 Run the contract tests:
 
 ```bash
-python3 -m pytest tests/test_production_plan_evaluator_skill.py -q
+python -m pytest -q
 ```
 
-The tests validate the skill discovery metadata, three-layer workflow, evidence contract, exception governance, calibration cases, and absence of auxiliary documentation clutter.
+The tests validate the three independent skill contracts, Gate v2 structured record requirements, validator behavior, downstream role boundaries, reference files, and removal of the old combined evaluator skill.
 
 ## License
 
